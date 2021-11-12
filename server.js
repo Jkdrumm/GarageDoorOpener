@@ -26,20 +26,28 @@ const connectEnsureLogin = require("connect-ensure-login");
 const httpServer = http
   .createServer(app)
   .listen(HTTP_PORT, () => console.log(`Server listening on ${HTTP_PORT}`));
-const httpsServer = https
-  .createServer(
-    {
-      key: fs.readFileSync(
-        `${CERTBOT_LIVE_DIRECTORY}\\${DOMAIN_NAME}\\privkey.pem`
-      ),
-      cert: fs.readFileSync(
-        `${CERTBOT_LIVE_DIRECTORY}\\${DOMAIN_NAME}\\fullchain.pem`
-      ),
-    },
-    app
-  )
-  .listen(HTTPS_PORT, () => console.log(`Server listening on ${HTTPS_PORT}`));
-expressWs(app, httpsServer);
+let httpsServer = null;
+
+try {
+  httpsServer = https
+    .createServer(
+      {
+        key: fs.readFileSync(
+          `${CERTBOT_LIVE_DIRECTORY}\\${DOMAIN_NAME}\\privkey.pem`
+        ),
+        cert: fs.readFileSync(
+          `${CERTBOT_LIVE_DIRECTORY}\\${DOMAIN_NAME}\\fullchain.pem`
+        ),
+      },
+      app
+    )
+    .listen(HTTPS_PORT, () => console.log(`Server listening on ${HTTPS_PORT}`));
+  expressWs(app, httpsServer);
+} catch (e) {
+  console.log(
+    "ERROR: Unable to create HTTPS server. Are you missing certificate keys?"
+  );
+}
 expressWs(app, httpServer);
 
 app.use(expressSession);
@@ -188,13 +196,17 @@ const checkPermissionWithCookie = (adminLevel) => (req, res, next) =>
     else return res.sendStatus(403);
   });
 
-app.get("/login", removeAdminCookie(), (req, res) =>
-  res.sendFile(path.join(__dirname, "client/build", "index.html"))
-);
+["login", "createAccount"].forEach((route) => {
+  app.get(`/${route}`, removeAdminCookie(), (req, res) =>
+    res.sendFile(path.join(__dirname, "build", "index.html"))
+  );
+});
 
-app.get("/createAccount", removeAdminCookie(), (req, res) =>
-  res.sendFile(path.join(__dirname, "client/build", "index.html"))
-);
+["account", "settings", "userSettings", ""].forEach((route) => {
+  app.get(`/${route}`, setAdminCookie(), (req, res) =>
+    res.sendFile(path.join(__dirname, "build", "index.html"))
+  );
+});
 
 app.get("/users", checkPermission(AdminLevel.ADMIN), (req, res) =>
   UserDetails.find({}, (error, users) => {
@@ -211,7 +223,8 @@ app.get("/users", checkPermission(AdminLevel.ADMIN), (req, res) =>
   })
 );
 
-app.get("/currentSettings");
+// TODO
+// app.get("/currentSettings");
 
 app.post("/login", removeAdminCookie(), (req, res) =>
   passport.authenticate("local", (error, user, info) => {
@@ -280,18 +293,6 @@ app.get("/logout", connectEnsureLogin.ensureLoggedIn(), (req, res) => {
   });
 });
 
-app.get("/account", setAdminCookie(), (req, res) =>
-  res.sendFile("client/build/index.html", { root: __dirname })
-);
-
-app.get("/settings", setAdminCookie(), (req, res) =>
-  res.sendFile("client/build/index.html", { root: __dirname })
-);
-
-app.get("/userSettings", setAdminCookie(), (req, res) =>
-  res.sendFile("client/build/index.html", { root: __dirname })
-);
-
 app.get(
   "/accountDetails",
   connectEnsureLogin.ensureLoggedIn(),
@@ -316,14 +317,10 @@ app.get(
   }
 );
 
-app.get("/", setAdminCookie(), (req, res) =>
-  res.sendFile("client/build/index.html", { root: __dirname })
-);
-
-app.use(express.static("client/build"));
+app.use(express.static("build"));
 
 app.use((req, res, next) =>
-  res.status(404).sendFile("client/build/index.html", { root: __dirname })
+  res.status(404).sendFile("build/index.html", { root: __dirname })
 );
 
 const validateNewAccount = (firstName, lastName, username, password) => {
