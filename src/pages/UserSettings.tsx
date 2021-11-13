@@ -4,16 +4,15 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Card, Spinner, Table } from "react-bootstrap";
 import AdminLevelContext from "../contexts/AdminLevelContext";
 
-const Settings = () => {
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [houseName, setHouseName] = useState("");
-  const [error, setError] = useState();
+const UserSettings = () => {
+  const [accountLoaded, setAccountLoaded] = useState<boolean>(false);
+  const [users, setUsers] = useState([]);
+  const [error, setError] = useState<string>();
 
-  const { adminLevel, loggedIn, isMobile, expandNavbar, setExpandNavbar } =
-    useContext(AdminLevelContext);
+  const { isMobile, setExpandNavbar } = useContext(AdminLevelContext);
 
   useEffect(() => {
-    fetch("/currentSettings", {
+    fetch("/users", {
       method: "GET",
       credentials: "same-origin",
       headers: {
@@ -23,10 +22,10 @@ const Settings = () => {
       .then((response) => {
         if (response.redirected) window.location.href = response.url;
         else {
-          setSettingsLoaded(true);
+          setAccountLoaded(true);
           response
             .json()
-            .then(() => {})
+            .then((users) => setUsers(users))
             .catch((error) => {
               setError("Unable to load accounts");
               console.error(response);
@@ -34,7 +33,7 @@ const Settings = () => {
         }
       })
       .catch((error) => {
-        setSettingsLoaded(true);
+        setAccountLoaded(true);
         setError(error);
       });
   }, []);
@@ -42,7 +41,7 @@ const Settings = () => {
   return (
     <header
       className="App-body"
-      onClick={isMobile ? () => setExpandNavbar(false) : null}
+      onClick={isMobile ? () => setExpandNavbar(false) : undefined}
     >
       <Card
         style={
@@ -64,10 +63,10 @@ const Settings = () => {
           <Card.Title>Garage Door Opener v2.0</Card.Title>
           <Card.Text>Admin Panel</Card.Text>
           <hr style={{ marginLeft: -16, marginRight: -16 }} />
-          {settingsLoaded ? (
+          {accountLoaded ? (
             <>
               {error && <Alert variant="danger">Error: {error}</Alert>}
-              <Table striped bordered hover size={isMobile ? "sm" : null}>
+              <Table striped bordered hover size={isMobile ? "sm" : undefined}>
                 <thead>
                   <tr>
                     <th>#</th>
@@ -77,7 +76,7 @@ const Settings = () => {
                     <th>Action</th>
                   </tr>
                 </thead>
-                {/* {users.map((user, index) => {
+                {users.map((user: any, index: number) => {
                   return (
                     <tbody key={user.id}>
                       <tr>
@@ -96,7 +95,7 @@ const Settings = () => {
                       </tr>
                     </tbody>
                   );
-                })} */}
+                })}
               </Table>
             </>
           ) : (
@@ -108,4 +107,4 @@ const Settings = () => {
   );
 };
 
-export default Settings;
+export default UserSettings;

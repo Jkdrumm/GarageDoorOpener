@@ -13,17 +13,19 @@ const ACCOUNT_WARNING_TEXT =
   "You do not have permission to view the garage door's status. If this an error, please contact your system administrator";
 
 const Home = () => {
-  const [doorState, setDoorState] = useState(GarageState.FETCHING);
+  const [doorState, setDoorState] = useState<string>(GarageState.FETCHING);
 
   const { adminLevel, isMobile, setExpandNavbar } =
     useContext(AdminLevelContext);
 
-  const websocket = useRef();
+  const websocket = useRef<any>();
 
   const timeoutWebsocket = () => {
     setDoorState(GarageState.SESSION_TIMEOUT);
-    websocket.current.sessionTimeout = true;
-    websocket.current.close();
+    if (websocket.current) {
+      websocket.current.sessionTimeout = true;
+      websocket.current.close();
+    }
   };
 
   const connectWebSocket = useCallback(() => {
@@ -32,7 +34,7 @@ const Home = () => {
         window.location.host
       }/ws`
     );
-    websocket.current.onmessage = (event) => {
+    websocket.current.onmessage = (event: any) => {
       switch (event.data) {
         case GarageState.OPEN:
         case GarageState.CLOSED:
@@ -52,7 +54,7 @@ const Home = () => {
           else console.warn(`Unknown data: ${event.data}`);
       }
     };
-    websocket.current.onerror = (error) => console.error(error);
+    websocket.current.onerror = (error: any) => console.error(error);
     websocket.current.onclose = () => {
       if (websocket.current.sessionTimeout !== true) {
         setDoorState(GarageState.FETCHING);
@@ -142,7 +144,7 @@ const Home = () => {
   return (
     <header
       className="App-body"
-      onClick={isMobile ? () => setExpandNavbar(false) : null}
+      onClick={isMobile ? () => setExpandNavbar(false) : undefined}
     >
       <Card
         style={

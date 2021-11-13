@@ -22,27 +22,29 @@ const PASSWORD_LENGTH_ERROR = "Password must be between 8 and 20 characters";
 const PASSWORD_RETYPE_MATCH_ERROR = "Password fields must match";
 
 const Login = () => {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordRetype, setPasswordRetype] = useState("");
-  const [error, setError] = useState();
-  const [showSpinner, setShowSpinner] = useState(false);
-  const [showPasswordHelp, setShowPasswordHelp] = useState(false);
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [passwordRetype, setPasswordRetype] = useState<string>("");
+  const [error, setError] = useState<string>();
+  const [showSpinner, setShowSpinner] = useState<boolean>(false);
+  const [showPasswordHelp, setShowPasswordHelp] = useState<boolean>(false);
 
-  const [showFirstNameError, setShowFirstNameError] = useState(false);
-  const [showLastNameError, setShowLastNameError] = useState(false);
-  const [showUsernameError, setShowUsernameError] = useState(false);
-  const [showPasswordError, setShowPasswordError] = useState(false);
-  const [showPasswordRetypeError, setShowPasswordRetypeError] = useState(false);
-  const [passwordRetypeValid, setPasswordRetypeValid] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [usernameTakenError, setUsernameTakenError] = useState(false);
+  const [showFirstNameError, setShowFirstNameError] = useState<boolean>(false);
+  const [showLastNameError, setShowLastNameError] = useState<boolean>(false);
+  const [showUsernameError, setShowUsernameError] = useState<boolean>(false);
+  const [showPasswordError, setShowPasswordError] = useState<boolean>(false);
+  const [showPasswordRetypeError, setShowPasswordRetypeError] =
+    useState<boolean>(false);
+  const [passwordRetypeValid, setPasswordRetypeValid] =
+    useState<boolean>(false);
+  const [submitted, setSubmitted] = useState<boolean>(false);
+  const [usernameTakenError, setUsernameTakenError] = useState<boolean>(false);
 
   const { isMobile, setExpandNavbar } = useContext(AdminLevelContext);
 
-  const questionRef = useRef();
+  const questionRef = useRef<any>();
 
   const validateFirstName = () => setShowFirstNameError(!firstNameValidation());
   const firstNameValidation = () => firstName.length !== 0;
@@ -72,7 +74,7 @@ const Login = () => {
   };
   const passwordRetypeValidation = () => password === passwordRetype;
 
-  const validateFields = (event) => {
+  const validateFields = (event: any) => {
     event.preventDefault();
     setSubmitted(true);
     setUsernameTakenError(false);
@@ -101,7 +103,7 @@ const Login = () => {
   };
 
   const submitNewAccount = () => {
-    setError(null);
+    setError(undefined);
     setShowSpinner(true);
     fetch("/createAccount", {
       method: "POST",
@@ -136,7 +138,7 @@ const Login = () => {
   return (
     <header
       className="App-body"
-      onClick={isMobile ? () => setExpandNavbar(false) : null}
+      onClick={isMobile ? () => setExpandNavbar(false) : undefined}
     >
       <Card
         style={

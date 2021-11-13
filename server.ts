@@ -272,9 +272,10 @@ app.post("/createAccount", removeAdminCookie(), async (req, res, next) => {
         })(req, res, next);
       })
       .catch((error) => {
-        const response = {};
-        if (error.name === "UserExistsError") response.field = "username";
-        response.message = error.message;
+        const response = {
+          field: error.name === "UserExistsError" ? "username" : undefined,
+          message: error.message,
+        };
         return res.json(response);
       });
   } else return res.json({ fields: validationErrors });

@@ -13,11 +13,12 @@ const ADMIN_TEXT = "Admin";
 const SETTINGS_TEXT = "Settings";
 const USER_SETTINGS_TEXT = "User Settings";
 
-const GarageNavbar = ({ path }) => {
+const GarageNavbar = ({ path }: { path: string }) => {
   const { adminLevel, loggedIn, isMobile, expandNavbar, setExpandNavbar } =
     useContext(AdminLevelContext);
 
-  const comparePath = (navPath) => `${path === navPath ? "#" : navPath}`;
+  const comparePath = (navPath: string) =>
+    `${path === navPath ? "#" : navPath}`;
 
   return (
     <Navbar
@@ -31,7 +32,7 @@ const GarageNavbar = ({ path }) => {
         <Navbar.Brand href={comparePath(Paths.HOME)}>Garage Door</Navbar.Brand>
         <Navbar.Toggle
           aria-controls="responsive-navbar-nav"
-          onClick={isMobile ? () => setExpandNavbar(!expandNavbar) : null}
+          onClick={isMobile ? () => setExpandNavbar(!expandNavbar) : undefined}
         />
         <Navbar.Collapse id="responsive-navbar-nav">
           <Nav className="me-auto">

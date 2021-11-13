@@ -10,7 +10,7 @@ const NotFound = () => {
   return (
     <header
       className="App-body"
-      onClick={isMobile ? () => setExpandNavbar(false) : null}
+      onClick={isMobile ? () => setExpandNavbar(false) : undefined}
     >
       <Card
         style={

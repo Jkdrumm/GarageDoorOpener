@@ -1,7 +1,7 @@
 import React from "react";
 
 type AdminLevelContextValue = {
-  adminLevel?: number;
+  adminLevel: number;
   loggedIn: boolean;
   windowHeight: number;
   isMobile: boolean;
@@ -10,7 +10,7 @@ type AdminLevelContextValue = {
 };
 
 const AdminLevelContext = React.createContext<AdminLevelContextValue>({
-  adminLevel: undefined,
+  adminLevel: 0,
   loggedIn: false,
   windowHeight: 1080,
   isMobile: false,

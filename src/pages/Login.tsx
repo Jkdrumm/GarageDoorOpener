@@ -11,17 +11,17 @@ import "../App.css";
 import AdminLevelContext from "../contexts/AdminLevelContext";
 
 const Login = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState();
-  const [showSpinner, setShowSpinner] = useState(false);
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [error, setError] = useState<string>();
+  const [showSpinner, setShowSpinner] = useState<boolean>(false);
 
   const { isMobile, setExpandNavbar } = useContext(AdminLevelContext);
 
-  const login = (event) => {
+  const login = (event: any) => {
     event.preventDefault();
     if (username.length !== 0 && password.length !== 0) {
-      setError(null);
+      setError(undefined);
       setShowSpinner(true);
       fetch("/login", {
         method: "POST",
@@ -48,7 +48,7 @@ const Login = () => {
   return (
     <header
       className="App-body"
-      onClick={isMobile ? () => setExpandNavbar(false) : null}
+      onClick={isMobile ? () => setExpandNavbar(false) : undefined}
     >
       <Card
         style={
