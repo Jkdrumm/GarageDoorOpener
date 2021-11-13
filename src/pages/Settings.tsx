@@ -4,15 +4,16 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Card, Spinner, Table } from "react-bootstrap";
 import AdminLevelContext from "../contexts/AdminLevelContext";
 
-const UserSettings = () => {
-  const [accountLoaded, setAccountLoaded] = useState(false);
-  const [users, setUsers] = useState([]);
-  const [error, setError] = useState();
+const Settings = () => {
+  const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false);
+  const [houseName, setHouseName] = useState<string>("");
+  const [error, setError] = useState<string>();
 
-  const { isMobile, setExpandNavbar } = useContext(AdminLevelContext);
+  const { adminLevel, loggedIn, isMobile, expandNavbar, setExpandNavbar } =
+    useContext(AdminLevelContext);
 
   useEffect(() => {
-    fetch("/users", {
+    fetch("/currentSettings", {
       method: "GET",
       credentials: "same-origin",
       headers: {
@@ -22,10 +23,10 @@ const UserSettings = () => {
       .then((response) => {
         if (response.redirected) window.location.href = response.url;
         else {
-          setAccountLoaded(true);
+          setSettingsLoaded(true);
           response
             .json()
-            .then((users) => setUsers(users))
+            .then(() => {})
             .catch((error) => {
               setError("Unable to load accounts");
               console.error(response);
@@ -33,7 +34,7 @@ const UserSettings = () => {
         }
       })
       .catch((error) => {
-        setAccountLoaded(true);
+        setSettingsLoaded(true);
         setError(error);
       });
   }, []);
@@ -41,7 +42,7 @@ const UserSettings = () => {
   return (
     <header
       className="App-body"
-      onClick={isMobile ? () => setExpandNavbar(false) : null}
+      onClick={isMobile ? () => setExpandNavbar(false) : undefined}
     >
       <Card
         style={
@@ -63,10 +64,10 @@ const UserSettings = () => {
           <Card.Title>Garage Door Opener v2.0</Card.Title>
           <Card.Text>Admin Panel</Card.Text>
           <hr style={{ marginLeft: -16, marginRight: -16 }} />
-          {accountLoaded ? (
+          {settingsLoaded ? (
             <>
               {error && <Alert variant="danger">Error: {error}</Alert>}
-              <Table striped bordered hover size={isMobile ? "sm" : null}>
+              <Table striped bordered hover size={isMobile ? "sm" : undefined}>
                 <thead>
                   <tr>
                     <th>#</th>
@@ -76,7 +77,7 @@ const UserSettings = () => {
                     <th>Action</th>
                   </tr>
                 </thead>
-                {users.map((user, index) => {
+                {/* {users.map((user, index) => {
                   return (
                     <tbody key={user.id}>
                       <tr>
@@ -95,7 +96,7 @@ const UserSettings = () => {
                       </tr>
                     </tbody>
                   );
-                })}
+                })} */}
               </Table>
             </>
           ) : (
@@ -107,4 +108,4 @@ const UserSettings = () => {
   );
 };
 
-export default UserSettings;
+export default Settings;

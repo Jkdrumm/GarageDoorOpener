@@ -1,17 +1,40 @@
-import { useContext } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import "../App.css";
-import { useEffect, useState } from "react";
-import { Alert, Card, Col, Form, Row, Spinner } from "react-bootstrap";
-import { AdminLevel, getAdminLevelText } from "../model/AdminLevel";
+import { Alert, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
+import {
+  AdminLevel,
+  getAdminLevelText,
+  checkAdminPermission,
+  checkNotOwner,
+} from "../model/AdminLevel";
 import getServerErrorText from "../model/ServerErrors";
 import AdminLevelContext from "../contexts/AdminLevelContext";
+import useChangesService from "../services/useChangesService";
+
+type accountFields =
+  | "firstName"
+  | "lastName"
+  | "username"
+  | "level"
+  | "isCurrentUser";
 
 const Account = () => {
-  const [accountData, setAccountData] = useState();
-  const [error, setError] = useState();
-
+  let initialState = useRef({
+    firstName: "",
+    lastName: "",
+    username: "",
+    level: 0,
+    isCurrentUser: false,
+  });
+  const { hasUnsavedChanges, handleUnsavedChange } = useChangesService();
+  const [accountData, setAccountData] = useState(initialState.current);
+  const [error, setError] = useState<string>();
   const { adminLevel, isMobile, setExpandNavbar } =
     useContext(AdminLevelContext);
+  const handleChange = (field: accountFields, value: string) => {
+    setAccountData((prevState: any) => ({ ...prevState, [field]: value }));
+    handleUnsavedChange(field, value, initialState.current[field].toString());
+  };
 
   useEffect(() => {
     fetch(`/accountDetails${window.location.search}`, {
@@ -27,7 +50,10 @@ const Account = () => {
           else {
             response.json().then((accountData) => {
               if (accountData.message) setError(accountData.message);
-              else setAccountData(accountData);
+              else {
+                initialState.current = accountData;
+                setAccountData(accountData);
+              }
             });
           }
         else {
@@ -40,7 +66,7 @@ const Account = () => {
   return (
     <header
       className="App-body"
-      onClick={isMobile ? () => setExpandNavbar(false) : null}
+      onClick={isMobile ? () => setExpandNavbar(false) : undefined}
     >
       <Card
         style={
@@ -95,22 +121,36 @@ const Account = () => {
                     Admin Level
                   </Form.Label>
                   <Col sm="9">
-                    {adminLevel >= AdminLevel.ADMIN &&
-                    (adminLevel !== AdminLevel.OWNER ||
+                    {adminLevel &&
+                    checkAdminPermission(adminLevel) &&
+                    (checkNotOwner(adminLevel) ||
                       !accountData.isCurrentUser) ? (
-                      <Form.Select aria-label="Default select example">
-                        {Object.values(AdminLevel)
-                          .filter((level) => level !== AdminLevel.OWNER)
-                          .map((level) => (
-                            <option
-                              key={level}
-                              value={level}
-                              selected={level === accountData.level}
-                            >
-                              {getAdminLevelText(level)}
-                            </option>
-                          ))}
-                      </Form.Select>
+                      <>
+                        <Form.Select
+                          aria-label="Default select example"
+                          onChange={({ target: { value } }) => {
+                            console.log(typeof value);
+                            handleChange("level", value);
+                          }}
+                        >
+                          {Object.values(AdminLevel)
+                            .filter((level) => level !== AdminLevel.OWNER)
+                            .map((level) => (
+                              <option
+                                key={level}
+                                value={level}
+                                selected={level === accountData.level}
+                              >
+                                {getAdminLevelText(level)}
+                              </option>
+                            ))}
+                        </Form.Select>
+                        {hasUnsavedChanges && (
+                          <Button variant="primary" type="submit">
+                            Submit Changes
+                          </Button>
+                        )}
+                      </>
                     ) : (
                       <Form.Control
                         value={getAdminLevelText(accountData.level)}

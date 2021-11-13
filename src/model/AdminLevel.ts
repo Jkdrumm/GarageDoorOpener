@@ -6,7 +6,7 @@ export const AdminLevel = Object.freeze({
   ACCOUNT: 0, // (Account)    - Can view and modify their account information, and delete their account
 });
 
-export const getAdminLevelText = (level) => {
+export const getAdminLevelText = (level: number) => {
   switch (level) {
     case 4:
       return "Owner";
@@ -22,3 +22,8 @@ export const getAdminLevelText = (level) => {
       return "";
   }
 };
+
+export const checkAdminPermission = (level: number) =>
+  [AdminLevel.ADMIN, AdminLevel.OWNER].includes(level);
+
+export const checkNotOwner = (level: number) => AdminLevel.OWNER !== level;

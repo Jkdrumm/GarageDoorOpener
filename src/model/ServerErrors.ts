@@ -5,7 +5,7 @@ const ServerErrors = Object.freeze({
   UNKNOWN: "Unknown error",
 });
 
-const getServerErrorText = (statusCode) => {
+const getServerErrorText = (statusCode: number) => {
   switch (statusCode) {
     case 403:
       return ServerErrors.FORBIDDEN;
