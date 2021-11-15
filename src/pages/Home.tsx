@@ -2,7 +2,7 @@ import { useContext } from "react";
 import "../App.css";
 import { useCallback, useEffect, useState, useRef, Fragment } from "react";
 import { Alert, Button, Card, Spinner } from "react-bootstrap";
-import { AdminLevel } from "../model/AdminLevel";
+import AdminLevel from "../model/AdminLevel";
 import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import AdminLevelContext from "../contexts/AdminLevelContext";

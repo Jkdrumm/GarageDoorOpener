@@ -1,6 +1,6 @@
 import { Container, Nav, Navbar, NavDropdown } from "react-bootstrap";
 import Paths from "../model/Paths";
-import { AdminLevel } from "../model/AdminLevel";
+import AdminLevel from "../model/AdminLevel";
 import { useContext } from "react";
 import AdminLevelContext from "../contexts/AdminLevelContext";
 

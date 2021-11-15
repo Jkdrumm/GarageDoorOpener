@@ -1,4 +1,4 @@
-export const AdminLevel = Object.freeze({
+const AdminLevel = Object.freeze({
   OWNER: 4, //   (Owner)      - Cannot have any privelidges removed. Can demote admins. Can transfer ownership
   ADMIN: 3, //   (Admin)      - Can access the admin portal and all of its functions. Can change user admin level up to admin. Cannot demote other admins.
   USER: 2, //    (User)       - Can open/close the garage door
@@ -27,3 +27,5 @@ export const checkAdminPermission = (level: number) =>
   [AdminLevel.ADMIN, AdminLevel.OWNER].includes(level);
 
 export const checkNotOwner = (level: number) => AdminLevel.OWNER !== level;
+
+export default AdminLevel;
