@@ -1,27 +1,32 @@
-const express = require("express");
+import express from "express";
+import fs from "fs";
+import http from "http";
+import https from "https";
+import expressWs from "express-ws";
+import passport from "passport";
+import cookieParser from "cookie-parser";
+import mongoose from "mongoose";
+import path from "path";
+import connectEnsureLogin from "connect-ensure-login";
+import UserDetails from "./src/server/model/UserDetails.js";
+import accountDetails from "./src/server/post/accountDetails.js";
+import expressSession from "express-session";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
-const fs = require("fs");
-const http = require("http");
-const https = require("https");
-const expressWs = require("express-ws");
-const passport = require("passport");
-const cookieParser = require("cookie-parser");
-const mongoose = require("mongoose");
-const passportLocalMongoose = require("passport-local-mongoose");
-const path = require("path");
 const HTTP_PORT = process.env.HTTP_PORT || 80;
 const HTTPS_PORT = process.env.HTTPS_PORT || 443;
 const CERTBOT_LIVE_DIRECTORY = "C:\\Certbot\\live";
 const DOMAIN_NAME = "spookygang.serveminecraft.net";
 const sessionTimeoutTime = 3600000;
-const expressSession = require("express-session")({
+const session = expressSession({
   secret: "secret",
   resave: true,
   rolling: true,
   saveUninitialized: false,
-  cookie: { maxAge: sessionTimeoutTime }, // 3600000
+  cookie: { maxAge: sessionTimeoutTime },
 });
-const connectEnsureLogin = require("connect-ensure-login");
 
 const httpServer = http
   .createServer(app)
@@ -50,7 +55,7 @@ try {
 }
 expressWs(app, httpServer);
 
-app.use(expressSession);
+app.use(session);
 app.use(express.json());
 app.use(passport.initialize());
 app.use(passport.session());
@@ -59,15 +64,6 @@ app.use(cookieParser());
 mongoose.connect("mongodb://localhost/Garage", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-});
-
-const Schema = mongoose.Schema;
-const UserDetail = new Schema({
-  firstName: String,
-  lastName: String,
-  username: String,
-  password: String,
-  level: Number,
 });
 
 const AdminLevel = Object.freeze({
@@ -85,22 +81,6 @@ const GarageState = Object.freeze({
   SESSION_TIMEOUT: "SESSION TIMED OUT",
 });
 
-const options = {
-  errorMessages: {
-    MissingPasswordError: "No password was given",
-    AttemptTooSoonError: "Account is currently locked. Try again later",
-    TooManyAttemptsError:
-      "Account locked due to too many failed login attempts",
-    NoSaltValueStoredError: "Authentication not possible. No salt value stored",
-    IncorrectPasswordError: "Password or username are incorrect",
-    IncorrectUsernameError: "Password or username are incorrect",
-    MissingUsernameError: "No username was given",
-    UserExistsError: "A user with the given username is already registered",
-  },
-};
-UserDetail.plugin(passportLocalMongoose, options);
-const UserDetails = mongoose.model("userInfo", UserDetail, "userInfo");
-
 passport.use(UserDetails.createStrategy());
 
 passport.serializeUser(UserDetails.serializeUser());
@@ -111,8 +91,8 @@ let doorState = GarageState.OPEN;
 let webSocketClients = {};
 const notifyDoorState = () => {
   const connectionsToClose = [];
-  for (const [id1, singleUserArray] of Object.entries(webSocketClients))
-    for (const [id2, ws] of Object.entries(singleUserArray))
+  for (const [, singleUserArray] of Object.entries(webSocketClients))
+    for (const [, ws] of Object.entries(singleUserArray))
       if (ws.expireDate >= new Date()) ws.send(doorState);
       else connectionsToClose.push(ws);
   connectionsToClose.forEach((ws) => {
@@ -190,25 +170,26 @@ const removeAdminCookie = () => (req, res, next) =>
     next();
   });
 
-const checkPermissionWithCookie = (adminLevel) => (req, res, next) =>
-  connectEnsureLogin.ensureLoggedIn()(req, res, () => {
-    if (req.user.level >= adminLevel) setAdminCookie()(req, res, next);
-    else return res.sendStatus(403);
-  });
+// const checkPermissionWithCookie =
+//   (adminLevel) => (req, res, next) =>
+//     connectEnsureLogin.ensureLoggedIn()(req, res, () => {
+//       if (req.user.level >= adminLevel) setAdminCookie()(req, res, next);
+//       else return res.sendStatus(403);
+//     });
 
 ["login", "createAccount"].forEach((route) => {
-  app.get(`/${route}`, removeAdminCookie(), (req, res) =>
+  app.get(`/${route}`, removeAdminCookie(), (_req, res) =>
     res.sendFile(path.join(__dirname, "build", "index.html"))
   );
 });
 
 ["account", "settings", "userSettings", ""].forEach((route) => {
-  app.get(`/${route}`, setAdminCookie(), (req, res) =>
+  app.get(`/${route}`, setAdminCookie(), (_req, res) =>
     res.sendFile(path.join(__dirname, "build", "index.html"))
   );
 });
 
-app.get("/users", checkPermission(AdminLevel.ADMIN), (req, res) =>
+app.get("/users", checkPermission(AdminLevel.ADMIN), (_req, res) =>
   UserDetails.find({}, (error, users) => {
     if (error) throw error;
     users = users.map((user) => {
@@ -226,7 +207,7 @@ app.get("/users", checkPermission(AdminLevel.ADMIN), (req, res) =>
 // TODO
 // app.get("/currentSettings");
 
-app.post("/login", removeAdminCookie(), (req, res) =>
+app.post("/login", removeAdminCookie(), (req, res, next) =>
   passport.authenticate("local", (error, user, info) => {
     if (error) return res.json(error);
     if (!user) return res.json(info);
@@ -304,6 +285,8 @@ app.get(
       if (req.user.level >= AdminLevel.ADMIN)
         try {
           user = { ...(await UserDetails.findById(userId).exec())._doc };
+          console.log(user);
+          console.log(userId);
         } catch (error) {
           return res.json({ message: "User not found" });
         }
@@ -318,9 +301,15 @@ app.get(
   }
 );
 
+app.post(
+  "/accountDetails",
+  checkPermission(AdminLevel.ADMIN),
+  async (req, res, next) => accountDetails(req, res, next)
+);
+
 app.use(express.static("build"));
 
-app.use((req, res, next) =>
+app.use((_req, res) =>
   res.status(404).sendFile("build/index.html", { root: __dirname })
 );
 
