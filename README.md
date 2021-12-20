@@ -26,7 +26,10 @@ Here is an example of how different access levels might function:
 
 1. Build the project
    - `npm run build`
-2. Run the project
-   - `npm run deploy`
+2. (Optional) Add certificate keys to 'certificates/{Your Domain Name}'
+   - privkey.pem
+   - fullchain.pem
+3. Run the project
+   - `npm run serve`
 
-The project runs on ports 443 for HTTPS and 80 for HTTP. HTTPS may not be enabled without proper certificate keys. Full setup for HTTPS is not complete
+The project runs on ports 443 for HTTPS and 80 for HTTP. HTTPS may not be enabled without proper certificate keys.

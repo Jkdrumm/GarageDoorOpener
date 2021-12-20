@@ -35,6 +35,7 @@ const AdminLevelProvider = ({ children }: AdminLevelProviderProps) => {
         isMobile,
         expandNavbar,
         setExpandNavbar,
+        setAdminLevel,
       }}
     >
       {children}

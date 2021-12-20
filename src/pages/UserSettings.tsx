@@ -66,37 +66,44 @@ const UserSettings = () => {
           {accountLoaded ? (
             <>
               {error && <Alert variant="danger">Error: {error}</Alert>}
-              <Table striped bordered hover size={isMobile ? "sm" : undefined}>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>First Name</th>
-                    <th>Last Name</th>
-                    <th>Username</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                {users.map((user: any, index: number) => {
-                  return (
-                    <tbody key={user.id}>
-                      <tr>
-                        <td>{index + 1}</td>
-                        <td>{user.firstName}</td>
-                        <td>{user.lastName}</td>
-                        <td>{user.username}</td>
-                        <td>
-                          <Button
-                            variant="secondary"
-                            href={`/account?id=${user.id}`}
-                          >
-                            Edit
-                          </Button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  );
-                })}
-              </Table>
+              <div style={{ margin: -16, marginBottom: -32 }}>
+                <Table
+                  striped
+                  bordered
+                  hover
+                  size={isMobile ? "sm" : undefined}
+                >
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>First Name</th>
+                      <th>Last Name</th>
+                      <th>Username</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  {users.map((user: any, index: number) => {
+                    return (
+                      <tbody key={user.id}>
+                        <tr>
+                          <td>{index + 1}</td>
+                          <td>{user.firstName}</td>
+                          <td>{user.lastName}</td>
+                          <td>{user.username}</td>
+                          <td>
+                            <Button
+                              variant="secondary"
+                              href={`/account?id=${user.id}`}
+                            >
+                              Edit
+                            </Button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    );
+                  })}
+                </Table>
+              </div>
             </>
           ) : (
             <Spinner animation="border" />

@@ -1,7 +1,8 @@
 import UserDetails from "../model/UserDetails.js";
 import handleResponse from "./handleResponse.js";
+import { updatePermissionLevel } from "../services/webSocket.js";
 
-const accountDetails = (req, res, next) => {
+const accountDetails = (req, res, _next) => {
   handleResponse(req, res, handleAccountChange, validations, mutations);
 };
 
@@ -10,8 +11,11 @@ const handleAccountChange = (req, res) => {
   const userId = req.body.id;
   delete updateFields.id;
   UserDetails.findByIdAndUpdate(userId, updateFields).then((user) => {
-    if (user) res.sendStatus(200);
-    else res.sendStatus(404);
+    if (user) {
+      if (updateFields["level"] !== undefined)
+        updatePermissionLevel(userId, updateFields["level"]);
+      res.sendStatus(200);
+    } else res.sendStatus(404);
   });
 };
 

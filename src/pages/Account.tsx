@@ -31,7 +31,7 @@ type accountFields =
   | "isCurrentUser";
 
 const Account = () => {
-  let initialState = useRef({
+  const initialState = useRef({
     firstName: "",
     lastName: "",
     username: "",

@@ -8,16 +8,22 @@ import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import path from "path";
 import connectEnsureLogin from "connect-ensure-login";
+import expressSession from "express-session";
+import { Gpio } from "onoff";
 import UserDetails from "./src/server/model/UserDetails.js";
 import accountDetails from "./src/server/post/accountDetails.js";
-import expressSession from "express-session";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import autoUpdater from "./src/server/services/autoUpdater.js";
+import __dirname from "./src/server/services/dirname.js";
+import GarageState from "./src/server/model/GarageState.js";
+import AdminLevel from "./src/server/model/AdminLevel.js";
+import {
+  doorState,
+  webSocketClients,
+  setDoorState,
+} from "./src/server/services/webSocket.js";
 const app = express();
 const HTTP_PORT = process.env.HTTP_PORT || 80;
 const HTTPS_PORT = process.env.HTTPS_PORT || 443;
-const CERTBOT_LIVE_DIRECTORY = "C:\\Certbot\\live";
 const DOMAIN_NAME = "spookygang.serveminecraft.net";
 const sessionTimeoutTime = 3600000;
 const session = expressSession({
@@ -27,6 +33,34 @@ const session = expressSession({
   saveUninitialized: false,
   cookie: { maxAge: sessionTimeoutTime },
 });
+
+let closed,
+  open = false;
+let pressButton = () => {};
+try {
+  const closedSensor = new Gpio(16, "in", "both");
+  const openSensor = new Gpio(18, "in", "both");
+  const garageSwitch = new Gpio(7, "out");
+
+  closedSensor.watch((error, value) => {
+    if (error) console.error(error);
+    else closed = value === 1;
+    console.log(value);
+  });
+
+  openSensor.watch((error, value) => {
+    if (error) console.error(error);
+    else open = value === 1;
+    console.log(value);
+  });
+
+  pressButton = async () => {
+    garageSwitch.writeSync(0);
+    setTimeout(() => garageSwitch.writeSync(1), 1000);
+  };
+} catch (error) {
+  console.error(error);
+}
 
 const httpServer = http
   .createServer(app)
@@ -38,10 +72,10 @@ try {
     .createServer(
       {
         key: fs.readFileSync(
-          `${CERTBOT_LIVE_DIRECTORY}\\${DOMAIN_NAME}\\privkey.pem`
+          `${__dirname}certificates\\${DOMAIN_NAME}\\privkey.pem`
         ),
         cert: fs.readFileSync(
-          `${CERTBOT_LIVE_DIRECTORY}\\${DOMAIN_NAME}\\fullchain.pem`
+          `${__dirname}certificates\\${DOMAIN_NAME}\\fullchain.pem`
         ),
       },
       app
@@ -66,83 +100,57 @@ mongoose.connect("mongodb://localhost/Garage", {
   useUnifiedTopology: true,
 });
 
-const AdminLevel = Object.freeze({
-  OWNER: 4, //   (Owner)      - Cannot have any privelidges removed. Can demote admins
-  ADMIN: 3, //   (Admin)      - Can access the admin portal and all of its functions. Can change user admin level up to admin. Cannot demote other admins.
-  USER: 2, //    (User)       - Can open/close the garage door
-  VIEWER: 1, //  (Viewer)     - Can only view the status of the garage door
-  ACCOUNT: 0, // (Account)    - Can view and modify their account information, and delete their account
-});
-
-const GarageState = Object.freeze({
-  OPEN: "OPEN",
-  CLOSED: "CLOSED",
-  UNKNOWN: "PARTIALLY OPEN/CLOSED",
-  SESSION_TIMEOUT: "SESSION TIMED OUT",
-});
-
 passport.use(UserDetails.createStrategy());
 
 passport.serializeUser(UserDetails.serializeUser());
 passport.deserializeUser(UserDetails.deserializeUser());
 
-let doorState = GarageState.OPEN;
-
-let webSocketClients = {};
-const notifyDoorState = () => {
-  const connectionsToClose = [];
-  for (const [, singleUserArray] of Object.entries(webSocketClients))
-    for (const [, ws] of Object.entries(singleUserArray))
-      if (ws.expireDate >= new Date()) ws.send(doorState);
-      else connectionsToClose.push(ws);
-  connectionsToClose.forEach((ws) => {
-    ws.send(GarageState.SESSION_TIMEOUT);
-    ws.close();
-  });
-};
-
-const setDoorState = (newState) => {
-  doorState = newState;
-  notifyDoorState();
-};
-
 app.ws("/ws", (ws, req) => {
-  if (req.user && req.user.level >= AdminLevel.VIEWER) {
-    const session = req.session;
-    if (session) {
-      const expireDate = new Date(session.cookie._expires);
-      if (expireDate >= new Date()) {
-        ws.expireDate = expireDate;
-        if (webSocketClients[req.user._id] === undefined) {
-          ws.requestIndex = 0;
-          webSocketClients[req.user._id] = [ws];
-        } else {
-          ws.requestIndex = webSocketClients[req.user._id].length;
-          webSocketClients[req.user._id].push(ws);
-        }
-        ws.send(sessionTimeoutTime);
-        ws.send(doorState);
-        if (req.user.level >= AdminLevel.USER)
-          ws.on("message", (message) => {
-            if (message === "PRESS")
-              setDoorState(
-                doorState === GarageState.OPEN
-                  ? GarageState.CLOSED
-                  : GarageState.OPEN
-              );
-          });
-
-        ws.on("close", () => {
-          const requestIndex = ws.requestIndex;
-          webSocketClients[req.user._id].splice(requestIndex, 1);
-          const socketArrayLength = webSocketClients[req.user._id].length;
-          if (socketArrayLength > 0)
-            for (let i = requestIndex; i < socketArrayLength; i++)
-              webSocketClients[req.user._id][i].requestIndex--;
-          else delete webSocketClients[req.user._id];
-        });
+  const session = req.session;
+  if (session) {
+    const expireDate = new Date(session.cookie._expires);
+    if (expireDate >= new Date()) {
+      ws.expireDate = expireDate;
+      if (webSocketClients[req.user._id] === undefined) {
+        ws.requestIndex = 0;
+        webSocketClients[req.user._id] = {
+          level: req.user.level,
+          connections: [ws],
+        };
+      } else {
+        ws.requestIndex = webSocketClients[req.user._id].connections.length;
+        webSocketClients[req.user._id].connections.push(ws);
       }
-    } else ws.close();
+      const payload = [];
+      payload.push({
+        event: "SESSION_TIMEOUT_LENGTH",
+        message: sessionTimeoutTime,
+      });
+      if (webSocketClients[req.user._id].level >= AdminLevel.VIEWER)
+        payload.push({ event: "STATE", message: doorState });
+      ws.send(JSON.stringify(payload));
+      ws.on("message", (message) => {
+        if (webSocketClients[req.user._id].level >= AdminLevel.USER)
+          if (message === "PRESS") {
+            pressButton();
+            setDoorState(
+              doorState === GarageState.OPEN
+                ? GarageState.CLOSED
+                : GarageState.OPEN
+            );
+          }
+      });
+      ws.on("close", () => {
+        const requestIndex = ws.requestIndex;
+        webSocketClients[req.user._id].connections.splice(requestIndex, 1);
+        const socketArrayLength =
+          webSocketClients[req.user._id].connections.length;
+        if (socketArrayLength > 0)
+          for (let i = requestIndex; i < socketArrayLength; i++)
+            webSocketClients[req.user._id].connections[i].requestIndex--;
+        else delete webSocketClients[req.user._id];
+      });
+    }
   } else ws.close();
 });
 
@@ -205,7 +213,18 @@ app.get("/users", checkPermission(AdminLevel.ADMIN), (_req, res) =>
 );
 
 // TODO
-// app.get("/currentSettings");
+app.get("/currentSettings", checkPermission(AdminLevel.ADMIN), (_req, res) => {
+  autoUpdater
+    .compareVersions()
+    .then(({ upToDate, currentVersion, remoteVersion }) => {
+      console.log(upToDate, currentVersion, remoteVersion);
+      return res.json({ upToDate, currentVersion, remoteVersion });
+    });
+});
+
+app.post("/downloadUpdate", checkPermission(AdminLevel.ADMIN), (_req, res) => {
+  autoUpdater.autoUpdate().then(() => res.redirect("/login"));
+});
 
 app.post("/login", removeAdminCookie(), (req, res, next) =>
   passport.authenticate("local", (error, user, info) => {
@@ -285,8 +304,6 @@ app.get(
       if (req.user.level >= AdminLevel.ADMIN)
         try {
           user = { ...(await UserDetails.findById(userId).exec())._doc };
-          console.log(user);
-          console.log(userId);
         } catch (error) {
           return res.json({ message: "User not found" });
         }
@@ -304,7 +321,7 @@ app.get(
 app.post(
   "/accountDetails",
   checkPermission(AdminLevel.ADMIN),
-  async (req, res, next) => accountDetails(req, res, next)
+  async (req, res, next) => accountDetails(req, res, next, webSocketClients)
 );
 
 app.use(express.static("build"));

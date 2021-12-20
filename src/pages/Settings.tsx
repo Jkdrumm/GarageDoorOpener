@@ -1,12 +1,33 @@
-import { useContext } from "react";
+import { useContext, useRef } from "react";
 import "../App.css";
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Spinner, Table } from "react-bootstrap";
+import {
+  Alert,
+  Button,
+  Card,
+  Container,
+  Row,
+  Spinner,
+  Table,
+} from "react-bootstrap";
 import AdminLevelContext from "../contexts/AdminLevelContext";
+import useChangesService from "../services/useChangesService";
+import getServerErrorText from "../model/ServerErrors";
+
+type DownloadState = "None" | "Downloading" | "Complete";
 
 const Settings = () => {
+  const initialState = useRef({
+    upToDate: false,
+    currentVersion: "",
+    remoteVersion: "",
+  });
+  const { hasUnsavedChanges, handleUnsavedChange, submitChanges } =
+    useChangesService();
   const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false);
-  const [houseName, setHouseName] = useState<string>("");
+  const [downloadState, setDownloadState] = useState<DownloadState>("None");
+  const [settings, setSettings] = useState<any>(initialState.current);
+  // const [houseName, setHouseName] = useState<string>("");
   const [error, setError] = useState<string>();
 
   const { adminLevel, loggedIn, isMobile, expandNavbar, setExpandNavbar } =
@@ -24,13 +45,20 @@ const Settings = () => {
         if (response.redirected) window.location.href = response.url;
         else {
           setSettingsLoaded(true);
-          response
-            .json()
-            .then(() => {})
-            .catch((error) => {
-              setError("Unable to load accounts");
-              console.error(response);
-            });
+          if (response.ok)
+            if (response.redirected) window.location.href = response.url;
+            else {
+              response.json().then((accountData) => {
+                if (accountData.message) setError(accountData.message);
+                else {
+                  initialState.current = accountData;
+                  setSettings(accountData);
+                }
+              });
+            }
+          else {
+            setError(getServerErrorText(response.status));
+          }
         }
       })
       .catch((error) => {
@@ -38,6 +66,24 @@ const Settings = () => {
         setError(error);
       });
   }, []);
+
+  const downloadUpdate = () => {
+    fetch("/downloadUpdate", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }).then((response) => {
+      if (response.redirected) window.location.href = response.url;
+      else {
+        if (response.ok) {
+          setDownloadState("Downloading");
+          // getDownloadStatus()
+        }
+      }
+    });
+  };
 
   return (
     <header
@@ -67,37 +113,19 @@ const Settings = () => {
           {settingsLoaded ? (
             <>
               {error && <Alert variant="danger">Error: {error}</Alert>}
-              <Table striped bordered hover size={isMobile ? "sm" : undefined}>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>First Name</th>
-                    <th>Last Name</th>
-                    <th>Username</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                {/* {users.map((user, index) => {
-                  return (
-                    <tbody key={user.id}>
-                      <tr>
-                        <td>{index + 1}</td>
-                        <td>{user.firstName}</td>
-                        <td>{user.lastName}</td>
-                        <td>{user.username}</td>
-                        <td>
-                          <Button
-                            variant="secondary"
-                            href={`/account?id=${user.id}`}
-                          >
-                            Edit
-                          </Button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  );
-                })} */}
-              </Table>
+              <Container>
+                <Row>Current Version: {settings.currentVersion}</Row>
+                <Row>Newest Version: {settings.remoteVersion}</Row>
+                <Row>
+                  {downloadState === "None" ? (
+                    <Button variant="primary" onClick={downloadUpdate}>
+                      Download Update
+                    </Button>
+                  ) : (
+                    <Spinner animation="border" />
+                  )}
+                </Row>
+              </Container>
             </>
           ) : (
             <Spinner animation="border" />

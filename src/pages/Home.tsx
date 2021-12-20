@@ -15,7 +15,7 @@ const ACCOUNT_WARNING_TEXT =
 const Home = () => {
   const [doorState, setDoorState] = useState<string>(GarageState.FETCHING);
 
-  const { adminLevel, isMobile, setExpandNavbar } =
+  const { adminLevel, isMobile, setExpandNavbar, setAdminLevel } =
     useContext(AdminLevelContext);
 
   const websocket = useRef<any>();
@@ -34,25 +34,40 @@ const Home = () => {
         window.location.host
       }/ws`
     );
-    websocket.current.onmessage = (event: any) => {
-      switch (event.data) {
-        case GarageState.OPEN:
-        case GarageState.CLOSED:
-          setDoorState(event.data);
-          break;
-        case "OPENING":
-        case "CLOSING":
-          setDoorState(GarageState.UNKNOWN);
-          break;
-        case GarageState.SESSION_TIMEOUT:
-          timeoutWebsocket();
-          break;
-        default:
-          const sessionTimeoutLength = Number(event.data);
-          if (!isNaN(sessionTimeoutLength))
-            setTimeout(timeoutWebsocket, sessionTimeoutLength);
-          else console.warn(`Unknown data: ${event.data}`);
-      }
+    websocket.current.onmessage = (e: any) => {
+      const payload = JSON.parse(e.data);
+      payload.forEach((item: { event: string; message: string }) => {
+        const { event, message } = item;
+        switch (event) {
+          case "STATE":
+            switch (message) {
+              case GarageState.OPEN:
+              case GarageState.CLOSED:
+                setDoorState(message);
+                break;
+              case "OPENING":
+              case "CLOSING":
+                setDoorState(GarageState.UNKNOWN);
+                break;
+              default:
+                console.warn(`Unknown state: ${message}`);
+            }
+            break;
+          case GarageState.SESSION_TIMEOUT:
+            timeoutWebsocket();
+            break;
+          case "SESSION_TIMEOUT_LENGTH":
+            const sessionTimeoutLength = Number(message);
+            if (!isNaN(sessionTimeoutLength))
+              setTimeout(timeoutWebsocket, sessionTimeoutLength);
+            break;
+          case "LEVEL":
+            setAdminLevel(Number(message));
+            break;
+          default:
+            console.warn(`Unknown data: ${event}: ${message}`);
+        }
+      });
     };
     websocket.current.onerror = (error: any) => console.error(error);
     websocket.current.onclose = () => {
@@ -61,11 +76,9 @@ const Home = () => {
         setTimeout(connectWebSocket, 10000);
       }
     };
-  }, [websocket]);
+  }, [websocket, setAdminLevel]);
 
-  useEffect(() => {
-    if (adminLevel >= AdminLevel.VIEWER) connectWebSocket();
-  }, [adminLevel, connectWebSocket]);
+  useEffect(connectWebSocket, [connectWebSocket]);
 
   const getDoorStatusText = () => {
     switch (doorState) {

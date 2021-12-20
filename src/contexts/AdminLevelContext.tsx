@@ -7,6 +7,7 @@ type AdminLevelContextValue = {
   isMobile: boolean;
   expandNavbar: boolean;
   setExpandNavbar: (expand: boolean) => void;
+  setAdminLevel: (level: number) => void;
 };
 
 const AdminLevelContext = React.createContext<AdminLevelContextValue>({
@@ -16,6 +17,7 @@ const AdminLevelContext = React.createContext<AdminLevelContextValue>({
   isMobile: false,
   expandNavbar: false,
   setExpandNavbar: () => {},
+  setAdminLevel: () => {},
 });
 
 export default AdminLevelContext;
